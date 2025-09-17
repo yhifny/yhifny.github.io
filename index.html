@@ -82,43 +82,41 @@
       <aside>
         <div class="card">
           <h2>Contact</h2>
-<!--          
-          <p class="muted">Get in touch</p>
- -->         
           <div class="contact" style="margin-top:10px">
             <a class="btn" href="mailto:yhifny at yahoo.com">Email</a>
-
-            
             <a class="btn" href="https://scholar.google.com.eg/citations?user=FMpOE5IAAAAJ&hl=en">Google Scholar</a>
             <a class="btn" href="https://www.linkedin.com/in/yasser-hifny-33a36810/">LinkedIn</a>
-<!--             
-            <a class="btn" href="https://github.com/yhifny">GitHub</a>
--->
-            
           </div>
           <h3 style="margin-top:14px">Quick Links</h3>
           <ul style="padding-left:18px;margin-top:6px;color:var(--muted)">
             <li><a href="cv.pdf" style="color:inherit;text-decoration:underline">Resume (PDF)</a></li>
-            
           </ul>
         </div>
-<!-- 
-        <div class="card" style="margin-top:12px">
-          <h3>Skills</h3>
-          <div style="margin-top:8px;color:var(--muted)">Machine Learning, PyTorch, TensorFlow</div>
-        </div>
-        
--->        
       </aside>
     </main>
 
     <footer>
       <div>© <span id="year"></span> Yasser Hifny • Hosted on GitHub Pages</div>
+      <div style="margin-top:6px;color:var(--muted)">
+        Total Visits: <span id="visitors">Loading...</span>
+      </div>
     </footer>
   </div>
 
   <script>
+    // Set current year
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Visitor counter using countapi.xyz (total visits)
+    fetch('https://api.countapi.xyz/hit/yasser-hifny.github.io/visits')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('visitors').textContent = data.value;
+      })
+      .catch(err => {
+        document.getElementById('visitors').textContent = 'N/A';
+        console.error('Counter error:', err);
+      });
   </script>
 </body>
 </html>
