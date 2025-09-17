@@ -11,21 +11,8 @@
     html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial; background:linear-gradient(180deg,#071022 0%, #0b1220 100%);color:#e6eef8}
     .wrap{max-width:980px;margin:36px auto;padding:28px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 6px 30px rgba(2,6,23,0.6)}
     header{display:flex;gap:20px;align-items:center}
-    .avatar {
-      width:96px;
-      height:120px;
-      border-radius:14px;
-      overflow:hidden;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:none;
-    }
-    .avatar img {
-      width:100%;
-      height:100%;
-      object-fit:cover;
-    }
+    .avatar { width:96px; height:120px; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:none; }
+    .avatar img { width:100%; height:100%; object-fit:cover; }
     h1{margin:0;font-size:26px}
     p.lead{margin:6px 0 0;color:var(--muted)}
     nav{margin-left:auto;display:flex;gap:10px}
@@ -39,6 +26,7 @@
     .tag{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-size:13px}
     .contact{display:flex;gap:10px;flex-wrap:wrap}
     .social{display:flex;gap:10px}
+    .visitors-number { font-weight:600; color:var(--accent); margin-left:6px; }
     @media (min-width:760px){main{grid-template-columns:2fr 1fr}}
   </style>
 </head>
@@ -51,8 +39,7 @@
       <div>
         <h1>Yasser Hifny</h1>
         <p class="lead">Professor</p>
-        <div class="tags">
-        </div>
+        <div class="tags"></div>
       </div>
       <nav>
         <a class="btn" href="#about">About</a>
@@ -97,26 +84,94 @@
 
     <footer>
       <div>© <span id="year"></span> Yasser Hifny • Hosted on GitHub Pages</div>
-      <div style="margin-top:6px;color:var(--muted)">
-        Total Visits: <span id="visitors">Loading...</span>
+
+      <!-- Numeric counter (primary) -->
+      <div style="margin-top:6px;color:var(--muted); display:flex; align-items:center; justify-content:center; gap:6px;">
+        Total Visits:
+        <span id="visitors" class="visitors-number" title="Visitor-counter status">Loading...</span>
+        <!-- Badge fallback (hidden by default) -->
+        <img id="visitors-badge" alt="visit badge" style="display:none; height:20px; vertical-align:middle;" />
       </div>
     </footer>
   </div>
 
   <script>
-    // Set current year
-    document.getElementById('year').textContent = new Date().getFullYear();
+    // Immediately-run block: updates year and visitor counter robustly.
+    (function () {
+      const yearEl = document.getElementById('year');
+      const visitorsEl = document.getElementById('visitors');
+      const badgeEl = document.getElementById('visitors-badge');
 
-    // Visitor counter using countapi.xyz (total visits)
-    fetch('https://api.countapi.xyz/hit/yasser-hifny.github.io/visits')
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('visitors').textContent = data.value;
-      })
-      .catch(err => {
-        document.getElementById('visitors').textContent = 'N/A';
-        console.error('Counter error:', err);
-      });
+      // show current year
+      yearEl.textContent = new Date().getFullYear();
+
+      // namespace/key for CountAPI (keep these consistent)
+      const namespace = 'yasser-hifny.github.io';
+      const key = 'visits';
+      const hitUrl = `https://api.countapi.xyz/hit/${encodeURIComponent(namespace)}/${encodeURIComponent(key)}`;
+      const createUrl = `https://api.countapi.xyz/create?namespace=${encodeURIComponent(namespace)}&key=${encodeURIComponent(key)}&value=0`;
+
+      async function updateCount() {
+        // If the page is opened locally (file://) the browser may block cross-origin fetches.
+        if (location.protocol === 'file:') {
+          visitorsEl.textContent = 'N/A';
+          visitorsEl.title = 'Local file protocol detected — run a local server or deploy to GitHub Pages to enable the counter.';
+          console.warn('Visitor counter: opened via file:// — use a local dev server (e.g., `python -m http.server`) or deploy to GitHub Pages.');
+          return;
+        }
+
+        try {
+          // First try incrementing (hit endpoint)
+          let res = await fetch(hitUrl, { cache: 'no-store' });
+
+          // If the hit returns a non-OK status, attempt to create the key then hit again
+          if (!res.ok) {
+            console.warn('CountAPI hit returned non-OK status', res.status, res.statusText);
+            const createRes = await fetch(createUrl, { cache: 'no-store' });
+            if (!createRes.ok) {
+              throw new Error(`CountAPI create failed (${createRes.status})`);
+            }
+            // try hit again after create
+            res = await fetch(hitUrl, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`CountAPI hit failed after create (${res.status})`);
+          }
+
+          const data = await res.json();
+          if (data && typeof data.value === 'number') {
+            // Pretty-print the number and set title
+            visitorsEl.textContent = data.value.toLocaleString();
+            visitorsEl.title = `Total visits: ${data.value}`;
+            // Hide badge in case it was shown previously
+            if (badgeEl) badgeEl.style.display = 'none';
+            visitorsEl.style.display = 'inline-block';
+          } else {
+            throw new Error('Unexpected response payload from CountAPI: ' + JSON.stringify(data));
+          }
+        } catch (err) {
+          // If anything goes wrong, show N/A and fallback to badge (HITS) for a visible count.
+          console.error('Visitor counter error', err);
+          visitorsEl.textContent = 'N/A';
+          visitorsEl.title = 'See console for details';
+
+          // Try HITS badge fallback (if page is served via http(s))
+          try {
+            // Only set badge for http(s) origins
+            if (location.protocol.startsWith('http')) {
+              const pageUrl = location.origin + location.pathname;
+              // hits.seeyoufarm badge increments and returns an SVG/badge.
+              badgeEl.src = 'https://hits.seeyoufarm.com/api/count/incr?url=' + encodeURIComponent(pageUrl);
+              badgeEl.style.display = 'inline-block';
+              visitorsEl.style.display = 'none'; // show badge instead of numeric text
+            }
+          } catch (badgeErr) {
+            console.warn('Badge fallback failed', badgeErr);
+          }
+        }
+      }
+
+      // Kick off
+      updateCount();
+    })();
   </script>
 </body>
 </html>
